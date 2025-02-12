@@ -4,8 +4,19 @@ import { Inbox } from 'lucide-react';
 import React, { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { uploadToS3, getS3Url } from '@/lib/s3'; // Import the upload functions
+import { useMutation } from '@tanstack/react-query';
+import axios from 'axios';
 
 const FileUpload = () => {
+
+    const {mutate} = useMutation({
+      mutationFn: async ({file_key, file_name}:{file_key: string, file_name: string}) => {
+        const response = await axios.post('/api/create-chat', {
+          file_key, file_name
+
+        })
+      }
+    })
     const [uploading, setUploading] = React.useState(false);
 
 
