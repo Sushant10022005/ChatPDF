@@ -1,23 +1,24 @@
 'use client';
 
-import { Inbox } from 'lucide-react';
+import { Inbox, Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { uploadToS3, getS3Url } from '@/lib/s3'; // Import the upload functions
 import { useMutation } from '@tanstack/react-query';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
 const FileUpload = () => {
-
-    const {mutate} = useMutation({
+    const [uploading, setUploading] = React.useState(false);
+    const {mutate, isPending} = useMutation({
       mutationFn: async ({file_key, file_name}:{file_key: string, file_name: string}) => {
         const response = await axios.post('/api/create-chat', {
           file_key, file_name
 
-        })
+        });
+        return response.data;
       }
     })
-    const [uploading, setUploading] = React.useState(false);
 
 
   const { getInputProps, getRootProps } = useDropzone({
@@ -27,17 +28,25 @@ const FileUpload = () => {
       const file = acceptedFiles[0];
 
       if (file.size > 10 * 1024 * 1024) {
-        alert('File is too large. Please upload a file less than 10MB');
+        toast.error('File is too large. Please upload a file less than 10MB');
         return;
       }
 
       try {
         setUploading(true);
         const data = await uploadToS3(file);
-        if(!data?.file_key || !data?.file_name) {
-            throw new Error('Upload failed');
-            return
+        if (!data?.file_key || !data?.file_name) {
+          toast.error('Upload failed');
+          return;
         }
+        mutate(data, {
+          onSuccess: (data) => {
+            toast.success(data.message);
+          },
+          onError: (err) => {
+            toast.error("Error creating chat");
+        }
+      })
 
       } catch (error) {
         alert('Upload failed. Please try again.');
@@ -57,9 +66,19 @@ const FileUpload = () => {
         })}
       >
         <input {...getInputProps()} />
+        {uploading || isPending ?(
+          <>
+          {/* loading state */}
+          <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+          <p className="mt-2 text-sm text-slate-400">Uploading...</p>
+          </>
+        ):(
+        <>
         <Inbox className="w-10 h-10 text-blue-500" />
         <p className="mt-2 text-sm text-slate-400">Drag and drop your PDF here</p>
-      </div>
+        </>
+      )}
+        </div>
 
     </div>
   );
